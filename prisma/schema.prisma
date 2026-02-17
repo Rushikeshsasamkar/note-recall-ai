@@ -20,3 +20,28 @@ model Note {
 
   @@map("notes")
 }
+
+model CredentialsUser {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  email        String   @unique
+  username     String?  @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions CredentialsSession[]
+
+  @@map("credentials_users")
+}
+
+model CredentialsSession {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  tokenHash String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user CredentialsUser @relation(fields: [userId], references: [id])
+
+  @@map("credentials_sessions")
+}
