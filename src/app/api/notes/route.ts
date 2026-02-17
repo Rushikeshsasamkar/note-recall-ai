@@ -1,12 +1,12 @@
 import { notesIndex } from "@/lib/db/pinecone";
 import prisma from "@/lib/db/prisma";
+import { getAuth } from "@/lib/auth";
 import { getEmbedding } from "@/lib/openai";
 import {
   createNoteSchema,
   deleteNoteSchema,
   updateNoteSchema,
 } from "@/lib/validation/note";
-import { auth } from "@clerk/nextjs";
 
 export async function POST(req: Request) {
   try {
@@ -21,33 +21,37 @@ export async function POST(req: Request) {
 
     const { title, content } = parseResult.data;
 
-    const { userId } = auth();
+    const { userId } = await getAuth();
 
     if (!userId) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const embedding = await getEmbeddingForNote(title, content);
+    const embedding = notesIndex
+      ? await getEmbeddingForNote(title, content)
+      : null;
 
-    const note = await prisma.$transaction(async (tx) => {
-      const note = await tx.note.create({
-        data: {
-          title,
-          content,
-          userId,
-        },
-      });
-
-      await notesIndex.upsert([
-        {
-          id: note.id,
-          values: embedding,
-          metadata: { userId },
-        },
-      ]);
-
-      return note;
+    const note = await prisma.note.create({
+      data: {
+        title,
+        content,
+        userId,
+      },
     });
+
+    if (notesIndex && embedding) {
+      try {
+        await notesIndex.upsert([
+          {
+            id: note.id,
+            values: embedding,
+            metadata: { userId },
+          },
+        ]);
+      } catch (error) {
+        console.error("Pinecone upsert failed, skipping index update.", error);
+      }
+    }
 
     return Response.json({ note }, { status: 201 });
   } catch (error) {
@@ -75,33 +79,37 @@ export async function PUT(req: Request) {
       return Response.json({ error: "Note not found" }, { status: 404 });
     }
 
-    const { userId } = auth();
+    const { userId } = await getAuth();
 
     if (!userId || userId !== note.userId) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const embedding = await getEmbeddingForNote(title, content);
+    const embedding = notesIndex
+      ? await getEmbeddingForNote(title, content)
+      : null;
 
-    const updatedNote = await prisma.$transaction(async (tx) => {
-      const updatedNote = await tx.note.update({
-        where: { id },
-        data: {
-          title,
-          content,
-        },
-      });
-
-      await notesIndex.upsert([
-        {
-          id,
-          values: embedding,
-          metadata: { userId },
-        },
-      ]);
-
-      return updatedNote;
+    const updatedNote = await prisma.note.update({
+      where: { id },
+      data: {
+        title,
+        content,
+      },
     });
+
+    if (notesIndex && embedding) {
+      try {
+        await notesIndex.upsert([
+          {
+            id,
+            values: embedding,
+            metadata: { userId },
+          },
+        ]);
+      } catch (error) {
+        console.error("Pinecone upsert failed, skipping index update.", error);
+      }
+    }
 
     return Response.json({ updatedNote }, { status: 200 });
   } catch (error) {
@@ -129,16 +137,21 @@ export async function DELETE(req: Request) {
       return Response.json({ error: "Note not found" }, { status: 404 });
     }
 
-    const { userId } = auth();
+    const { userId } = await getAuth();
 
     if (!userId || userId !== note.userId) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.note.delete({ where: { id } });
-      await notesIndex.deleteOne(id);
-    });
+    await prisma.note.delete({ where: { id } });
+
+    if (notesIndex) {
+      try {
+        await notesIndex.deleteOne(id);
+      } catch (error) {
+        console.error("Pinecone delete failed, skipping index update.", error);
+      }
+    }
 
     return Response.json({ message: "Note deleted" }, { status: 200 });
   } catch (error) {
@@ -148,5 +161,5 @@ export async function DELETE(req: Request) {
 }
 
 async function getEmbeddingForNote(title: string, content: string | undefined) {
-  return getEmbedding(title + "\n\n" + content ?? "");
+  return getEmbedding(`${title}\n\n${content ?? ""}`);
 }
