@@ -1,30 +1,32 @@
 import logo from "@/assets/logo.png";
-import { Button } from "@/components/ui/button";
-import { auth } from "@clerk/nextjs";
+import HomeAuthActions from "@/components/HomeAuthActions";
+import { getAuth } from "@/lib/auth";
 import Image from "next/image";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-export default function Home() {
-  const { userId } = auth();
+export default async function Home() {
+  const { userId } = await getAuth();
 
   if (userId) redirect("/notes");
 
   return (
-    <main className="flex h-screen flex-col items-center justify-center gap-5">
+    <main className="relative flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-16 text-center">
+      <div className="pointer-events-none absolute -top-24 right-[-10%] h-64 w-64 rounded-full bg-primary/15 blur-3xl animate-float-slow" />
+      <div className="pointer-events-none absolute -bottom-20 left-[-5%] h-72 w-72 rounded-full bg-accent/70 blur-3xl animate-float-slow" />
+      <div className="rounded-full border border-border/60 bg-card/70 px-4 py-1 text-xs uppercase tracking-[0.4em] text-muted-foreground shadow-card backdrop-blur">
+        Thoughtful notes, instant recall
+      </div>
       <div className="flex items-center gap-4">
-        <Image src={logo} alt="FlowBrain logo" width={100} height={100} />
-        <span className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-          FlowBrain
+        <Image src={logo} alt="MindDock logo" width={100} height={100} />
+        <span className="font-display text-4xl font-semibold tracking-tight lg:text-5xl">
+          MindDock
         </span>
       </div>
-      <p className="max-w-prose text-center">
-        An intelligent note-taking app with AI integration, built with OpenAI,
-        Pinecone, Next.js, Shadcn UI, Clerk, and more.
+      <p className="text-balance max-w-2xl text-lg text-muted-foreground">
+        An intelligent note-taking space that blends fast capture with
+        context-aware AI, built on Next.js, Prisma, and modern vector search.
       </p>
-      <Button size="lg" asChild>
-        <Link href="/notes">Open</Link>
-      </Button>
+      <HomeAuthActions />
     </main>
   );
 }
