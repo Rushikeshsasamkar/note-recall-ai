@@ -612,12 +612,6 @@ curl -X POST http://localhost:3000/api/chat \
 }
 ```
 
-### UI screenshot
-
-> Baseline app snapshot (tutorial reference):
-
-![MindDock UI thumbnail](https://github.com/codinginflow/nextjs-ai-note-app/assets/52977034/cefc69f2-a486-4072-bf69-d0738f7336af)
-
 ---
 
 ## Notes for Contributors
