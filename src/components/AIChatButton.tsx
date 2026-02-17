@@ -8,7 +8,7 @@ export default function AIChatButton() {
 
   return (
     <>
-      <Button onClick={() => setChatBoxOpen(true)}>
+      <Button onClick={() => setChatBoxOpen(true)} className="shadow-glow">
         <Bot size={20} className="mr-2" />
         AI Chat
       </Button>
