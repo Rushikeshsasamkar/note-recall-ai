@@ -1,8 +1,9 @@
 import { notesIndex } from "@/lib/db/pinecone";
 import prisma from "@/lib/db/prisma";
-import openai, { getEmbedding } from "@/lib/openai";
-import { auth } from "@clerk/nextjs";
+import { getAuth } from "@/lib/auth";
+import openai, { chatModel, getEmbedding } from "@/lib/openai";
 import { OpenAIStream, StreamingTextResponse } from "ai";
+import { Note } from "@prisma/client";
 import { ChatCompletionMessage } from "openai/resources/index.mjs";
 
 export async function POST(req: Request) {
@@ -12,25 +13,52 @@ export async function POST(req: Request) {
 
     const messagesTruncated = messages.slice(-6);
 
-    const embedding = await getEmbedding(
-      messagesTruncated.map((message) => message.content).join("\n"),
-    );
+    const { userId } = await getAuth();
 
-    const { userId } = auth();
+    if (!userId) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const vectorQueryResponse = await notesIndex.query({
-      vector: embedding,
-      topK: 4,
-      filter: { userId },
-    });
+    let relevantNotes: Note[] = [];
 
-    const relevantNotes = await prisma.note.findMany({
-      where: {
-        id: {
-          in: vectorQueryResponse.matches.map((match) => match.id),
-        },
-      },
-    });
+    if (notesIndex) {
+      try {
+        const embedding = await getEmbedding(
+          messagesTruncated.map((message) => message.content).join("\n"),
+        );
+
+        const vectorQueryResponse = await notesIndex.query({
+          vector: embedding,
+          topK: 4,
+          filter: { userId },
+        });
+
+        const noteIds = vectorQueryResponse.matches.map((match) => match.id);
+
+        if (noteIds.length > 0) {
+          relevantNotes = await prisma.note.findMany({
+            where: {
+              id: {
+                in: noteIds,
+              },
+            },
+          });
+        }
+      } catch (error) {
+        console.error(
+          "Pinecone query failed, falling back to recent notes.",
+          error,
+        );
+      }
+    }
+
+    if (relevantNotes.length === 0) {
+      relevantNotes = await prisma.note.findMany({
+        where: { userId },
+        orderBy: { updatedAt: "desc" },
+        take: 4,
+      });
+    }
 
     console.log("Relevant notes found: ", relevantNotes);
 
@@ -45,7 +73,7 @@ export async function POST(req: Request) {
     };
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: chatModel,
       stream: true,
       messages: [systemMessage, ...messagesTruncated],
     });
