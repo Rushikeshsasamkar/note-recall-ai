@@ -16,6 +16,10 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "ui-serif", "serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -51,12 +55,24 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      boxShadow: {
+        card: "0 1px 2px hsl(var(--shadow) / 0.18), 0 16px 30px -20px hsl(var(--shadow) / 0.55)",
+        glow: "0 0 0 1px hsl(var(--ring) / 0.2), 0 16px 36px -18px hsl(var(--ring) / 0.55)",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        "fade-up": {
+          "0%": { opacity: 0, transform: "translateY(12px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
         "accordion-down": {
           from: { height: 0 },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -67,6 +83,8 @@ module.exports = {
         },
       },
       animation: {
+        "fade-up": "fade-up 0.6s ease-out both",
+        "float-slow": "float 7s ease-in-out infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
