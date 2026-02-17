@@ -4,6 +4,9 @@
  
 @layer base {
   :root {
+    --font-sans: "Space Grotesk", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-display: "Fraunces", "Iowan Old Style", "Times New Roman", Georgia, serif;
+
     --background: 36 33% 96%;
     --foreground: 222 21% 13%;
 
